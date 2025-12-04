@@ -61,6 +61,8 @@ def run(
     end: str = typer.Option(None, help="End date YYYY-MM-DD (default: today)"),
     provider: str = typer.Option("binance_us", help="Provider: binance|binance_us|coinbase"),
     strategy: str = typer.Option("baseline", help="Strategy: baseline|linear|ema_long_short|ema_bracket"),
+    cooldown_bars: int = typer.Option(60, help="Min bars between EMA signals"),
+    max_signals: int = typer.Option(2000, help="Max EMA signals (caps runtime)"),
 ) -> None:
     """Run the full pipeline: data -> features -> model -> sim -> metrics."""
     # Select symbol based on provider formatting
@@ -130,18 +132,28 @@ def run(
         model_orders = LinearSignalModel().fit(df).predict(df, trade_symbol)
     elif strategy == "ema_long_short":
         from liq.examples.models.ema_cross import EMACrossModel
-        model_orders = EMACrossModel(allow_short=True).predict(df, trade_symbol)
+        model_orders = EMACrossModel(
+            allow_short=True,
+            cooldown_bars=cooldown_bars,
+            max_signals=max_signals,
+        ).predict(df, trade_symbol)
     elif strategy == "ema_bracket":
         from liq.examples.models.ema_cross import EMACrossModel
         model_orders = EMACrossModel(
             allow_short=True,
             take_profit_pct=0.01,
             stop_loss_pct=0.005,
+            cooldown_bars=cooldown_bars,
+            max_signals=max_signals,
         ).predict(df, trade_symbol)
     console.print(
         f"[yellow]Orders[/yellow] baseline={len(baseline_orders)}, strategy={strategy} -> {len(model_orders)}"
     )
     all_orders = baseline_orders + model_orders
+    console.print(
+        f"[yellow]Running simulation on {len(bars:=_to_bars(df, trade_symbol))} bars and {len(all_orders)} orders; "
+        f"may take a few minutes for long ranges[/yellow]"
+    )
 
     # Sim config (Binance-like)
     provider_cfg = ProviderConfig(
@@ -154,7 +166,6 @@ def run(
     )
     sim_cfg = SimulatorConfig(min_order_delay_bars=0, initial_capital=1_000_000)
     sim = Simulator(provider_config=provider_cfg, config=sim_cfg)
-    bars = _to_bars(df, trade_symbol)
     result = sim.run(all_orders, bars)
     console.print(f"[green]Fills: {len(result.fills)}[/green]")
     if result.equity_curve:

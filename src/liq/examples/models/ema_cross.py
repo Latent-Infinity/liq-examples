@@ -21,6 +21,8 @@ class EMACrossModel:
     allow_short: bool = False
     take_profit_pct: float | None = None
     stop_loss_pct: float | None = None
+    cooldown_bars: int = 60  # enforce spacing between signals
+    max_signals: int | None = None
 
     def predict(self, df: pl.DataFrame, symbol: str) -> List[OrderRequest]:
         if df.height < self.slow_window:
@@ -33,8 +35,15 @@ class EMACrossModel:
         fast_series = enriched["fast"]
         slow_series = enriched["slow"]
         orders: list[OrderRequest] = []
+        last_signal_idx: int | None = None
+        signal_count = 0
 
         for i in range(1, len(fast_series)):
+            if last_signal_idx is not None and (i - last_signal_idx) < self.cooldown_bars:
+                continue
+            if self.max_signals is not None and signal_count >= self.max_signals:
+                break
+
             prev_diff = fast_series[i - 1] - slow_series[i - 1]
             curr_diff = fast_series[i] - slow_series[i]
             ts = enriched["timestamp"][i]
@@ -45,8 +54,12 @@ class EMACrossModel:
 
             if crossed_up:
                 orders.extend(self._entry_and_brackets(symbol, OrderSide.BUY, ts, close_p))
+                last_signal_idx = i
+                signal_count += 1
             elif crossed_down and self.allow_short:
                 orders.extend(self._entry_and_brackets(symbol, OrderSide.SELL, ts, close_p))
+                last_signal_idx = i
+                signal_count += 1
 
         return orders
 

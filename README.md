@@ -23,13 +23,13 @@ PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim
 PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
   python -m liq.examples.run_example --start 2024-01-01 --end 2024-01-02 --provider coinbase --strategy baseline
 
-# EMA long/short on ~1 year of live data (midrange EMAs, shorting allowed)
+# EMA long/short on ~1 year of live data (midrange EMAs, shorting allowed). Adjust cooldown and max-signals to control runtime.
 PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
-  python -m liq.examples.run_example --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy ema_long_short
+  python -m liq.examples.run_example --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy ema_long_short --cooldown-bars 60 --max-signals 2000
 
 # EMA with take-profit/stop-loss brackets (long and short)
 PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
-  python -m liq.examples.run_example --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy ema_bracket
+  python -m liq.examples.run_example --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy ema_bracket --cooldown-bars 60 --max-signals 2000
 
 # Synthetic 1-year fixture remains available for offline runs (not default)
 PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
