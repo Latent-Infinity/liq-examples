@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test/coverage caches
+.pytest_cache/
+.coverage
+.coverage.*
+.ruff_cache/
+htmlcov/
+.mypy_cache/
+.pdm-python
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# Env files
+.env
+
+# Data/outputs
+data/
+*.parquet
+*.csv
+*.json
+*.ipynb_checkpoints
