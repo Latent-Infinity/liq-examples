@@ -25,15 +25,22 @@ class EMACrossModel:
         fast = mid.ewm_mean(span=self.fast_window, adjust=False).alias("fast")
         slow = mid.ewm_mean(span=self.slow_window, adjust=False).alias("slow")
         enriched = df.select(["timestamp"]).with_columns([fast, slow])
-        last = enriched.tail(2)
-        if last.height < 2:
+
+        # Find the first bullish crossover (fast crosses above slow) to generate a buy.
+        fast_series = enriched["fast"]
+        slow_series = enriched["slow"]
+        cross_index = None
+        for i in range(1, len(fast_series)):
+            prev_diff = fast_series[i - 1] - slow_series[i - 1]
+            curr_diff = fast_series[i] - slow_series[i]
+            if prev_diff <= 0 and curr_diff > 0:
+                cross_index = i
+                break
+
+        if cross_index is None:
             return []
-        prev_fast, prev_slow = last["fast"][0], last["slow"][0]
-        curr_fast, curr_slow = last["fast"][1], last["slow"][1]
-        crossed_up = prev_fast <= prev_slow and curr_fast > curr_slow
-        if not crossed_up:
-            return []
-        ts = df["timestamp"][-1]
+
+        ts = enriched["timestamp"][cross_index]
         return [
             OrderRequest(
                 symbol=symbol,

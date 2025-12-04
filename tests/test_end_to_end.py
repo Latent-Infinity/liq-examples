@@ -21,9 +21,9 @@ def test_pipeline_and_models_smoke() -> None:
     # may be zero depending on data; just ensure no crash
     assert orders is not None
 
-    # ema model should produce list (possibly empty)
+    # ema model should produce at least one order on the uptrend fixture
     ema_orders = EMACrossModel().predict(df, "BTC_USDT")
-    assert ema_orders is not None
+    assert ema_orders
 
     # ensure pipeline can transform returns
     mid = (df["high"] + df["low"]) / 2

@@ -14,9 +14,12 @@ Example end-to-end workflows for the LIQ Stack. Keeps examples isolated from cor
 
 Uses Binance public data (no auth required) or a small fixture:
 ```bash
-# Fixture (fast)
-python -m liq.examples.run_example --use-fixture
+# From repo root (adds sibling libs to PYTHONPATH)
+cd quant/liq-examples
+PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
+  python -m liq.examples.run_example --use-fixture
 
 # Fetch binance public BTC_USDT 1m (adjust dates as desired)
-python -m liq.examples.run_example --start 2024-01-01 --end 2024-01-07
+PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
+  python -m liq.examples.run_example --start 2024-01-01 --end 2024-01-07
 ```

@@ -105,6 +105,9 @@ def run(
     elif strategy == "ema":
         from liq.examples.models.ema_cross import EMACrossModel
         model_orders = EMACrossModel().predict(df, "BTC_USDT")
+    console.print(
+        f"[yellow]Orders[/yellow] baseline={len(baseline_orders)}, strategy={strategy} -> {len(model_orders)}"
+    )
     all_orders = baseline_orders + model_orders
 
     # Sim config (Binance-like)
