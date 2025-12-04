@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 import json
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import polars as pl
 from rich.console import Console
 import typer
+
+# Add sibling library src paths when running from repo (no install)
+ROOT = Path(__file__).resolve().parents[3]
+for rel in ("src", "../liq-metrics/src", "../liq-features/src", "../liq-data/src", "../liq-sim/src"):
+    candidate = (ROOT / rel).resolve()
+    if candidate.is_dir() and str(candidate) not in sys.path:
+        sys.path.insert(0, str(candidate))
 
 from liq.data.providers.binance import BinanceProvider
 from liq.examples.data.fixtures import btc_usdt_fixture
