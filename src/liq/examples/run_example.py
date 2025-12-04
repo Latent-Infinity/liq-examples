@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import polars as pl
@@ -47,20 +47,24 @@ def _to_bars(df: pl.DataFrame) -> list[Bar]:
 @app.command()
 def run(
     use_fixture: bool = typer.Option(False, help="Use small fixture instead of fetching"),
-    start: str = typer.Option("2024-01-01", help="Start date YYYY-MM-DD"),
-    end: str = typer.Option("2024-01-07", help="End date YYYY-MM-DD"),
+    start: str = typer.Option(None, help="Start date YYYY-MM-DD (default: 1 year ago)"),
+    end: str = typer.Option(None, help="End date YYYY-MM-DD (default: today)"),
     use_us: bool = typer.Option(False, help="Use binance.us endpoint"),
+    strategy: str = typer.Option("baseline", help="Strategy: baseline|linear|ema"),
 ) -> None:
     """Run the full pipeline: data -> features -> model -> sim -> metrics."""
     # Data
     if use_fixture:
         df = btc_usdt_fixture()
     else:
+        today = date.today()
+        end_dt = date.fromisoformat(end) if end else today
+        start_dt = date.fromisoformat(start) if start else (end_dt - timedelta(days=365))
         provider = BinanceProvider(use_us=use_us)
         df = provider.fetch_bars(
             "BTC_USDT",
-            start=date.fromisoformat(start),
-            end=date.fromisoformat(end),
+            start=start_dt,
+            end=end_dt,
             timeframe="1m",
         )
     console.print(f"[green]Loaded bars: {df.height}[/green]")
@@ -85,10 +89,14 @@ def run(
     labels = triple_barrier_labels(df, cfg)
     console.print("[cyan]Labels[/cyan]", summarize_labels(labels))
 
-    # Orders: baseline + model
+    # Orders: baseline + selected strategy
     baseline_orders = buy_and_hold(df, "BTC_USDT")
-    model = LinearSignalModel().fit(df)
-    model_orders = model.predict(df, "BTC_USDT")
+    model_orders: list[OrderRequest] = []
+    if strategy == "linear":
+        model_orders = LinearSignalModel().fit(df).predict(df, "BTC_USDT")
+    elif strategy == "ema":
+        from liq.examples.models.ema_cross import EMACrossModel
+        model_orders = EMACrossModel().predict(df, "BTC_USDT")
     all_orders = baseline_orders + model_orders
 
     # Sim config (Binance-like)
