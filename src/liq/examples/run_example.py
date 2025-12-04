@@ -36,6 +36,7 @@ from liq.types import OrderRequest, Bar
 
 app = typer.Typer(help="BTC_USDT end-to-end example")
 console = Console()
+status = console.status
 
 
 def _to_bars(df: pl.DataFrame, symbol: str) -> list[Bar]:
@@ -69,51 +70,54 @@ def run(
     trade_symbol = "BTC_USDT" if provider in ("binance", "binance_us") else "BTC-USD"
 
     # Data
-    if use_fixture:
-        df = btc_usdt_fixture()
-    elif use_synthetic_year:
-        df = btc_usdt_year_fixture()
-    else:
-        today = date.today()
-        end_dt = date.fromisoformat(end) if end else today
-        start_dt = date.fromisoformat(start) if start else (end_dt - timedelta(days=365))
-        if provider == "binance":
-            provider_client = BinanceProvider(use_us=False)
-            df = provider_client.fetch_bars(
-                trade_symbol,
-                start=start_dt,
-                end=end_dt,
-                timeframe="1m",
-            )
-        elif provider == "binance_us":
-            provider_client = BinanceProvider(use_us=True)
-            df = provider_client.fetch_bars(
-                trade_symbol,
-                start=start_dt,
-                end=end_dt,
-                timeframe="1m",
-            )
-        elif provider == "coinbase":
-            provider_client = CoinbaseProvider()
-            df = provider_client.fetch_bars(
-                trade_symbol,
-                start=start_dt,
-                end=end_dt,
-                timeframe="1m",
-            )
+    with console.status("[yellow]Loading data...[/yellow]"):
+        if use_fixture:
+            df = btc_usdt_fixture()
+        elif use_synthetic_year:
+            df = btc_usdt_year_fixture()
         else:
-            raise ValueError("Unsupported provider; choose binance, binance_us, or coinbase")
+            today = date.today()
+            end_dt = date.fromisoformat(end) if end else today
+            start_dt = date.fromisoformat(start) if start else (end_dt - timedelta(days=365))
+            if provider == "binance":
+                provider_client = BinanceProvider(use_us=False)
+                df = provider_client.fetch_bars(
+                    trade_symbol,
+                    start=start_dt,
+                    end=end_dt,
+                    timeframe="1m",
+                )
+            elif provider == "binance_us":
+                provider_client = BinanceProvider(use_us=True)
+                df = provider_client.fetch_bars(
+                    trade_symbol,
+                    start=start_dt,
+                    end=end_dt,
+                    timeframe="1m",
+                )
+            elif provider == "coinbase":
+                provider_client = CoinbaseProvider()
+                df = provider_client.fetch_bars(
+                    trade_symbol,
+                    start=start_dt,
+                    end=end_dt,
+                    timeframe="1m",
+                )
+            else:
+                raise ValueError("Unsupported provider; choose binance, binance_us, or coinbase")
     console.print(f"[green]Loaded bars: {df.height}[/green]")
 
     # QA metrics
-    qa = run_bar_qa(df)
+    with console.status("[yellow]Running QA...[/yellow]"):
+        qa = run_bar_qa(df)
     console.print("[cyan]QA metrics[/cyan]", summarize_qa(qa))
 
     # Features/pipeline
-    mid = (df["high"] + df["low"]) / 2
-    rets = mid.pct_change().fill_null(0).to_list()
-    pipeline = fit_pipeline(df)
-    transformed = pipeline.transform(rets)
+    with console.status("[yellow]Building features...[/yellow]"):
+        mid = (df["high"] + df["low"]) / 2
+        rets = mid.pct_change().fill_null(0).to_list()
+        pipeline = fit_pipeline(df)
+        transformed = pipeline.transform(rets)
 
     # Drift (compare end slice vs train slice)
     split = max(5, len(transformed) // 2)
@@ -121,8 +125,9 @@ def run(
     console.print("[cyan]Drift[/cyan]", summarize_drift([drift_res.statistic]))
 
     # Labels for sanity (triple barrier on closes)
-    cfg = TripleBarrierConfig(take_profit=0.01, stop_loss=0.02, max_holding=5)
-    labels = triple_barrier_labels(df, cfg)
+    with console.status("[yellow]Computing labels...[/yellow]"):
+        cfg = TripleBarrierConfig(take_profit=0.01, stop_loss=0.02, max_holding=5)
+        labels = triple_barrier_labels(df, cfg)
     console.print("[cyan]Labels[/cyan]", summarize_labels(labels))
 
     # Orders: baseline + selected strategy
@@ -132,20 +137,22 @@ def run(
         model_orders = LinearSignalModel().fit(df).predict(df, trade_symbol)
     elif strategy == "ema_long_short":
         from liq.examples.models.ema_cross import EMACrossModel
-        model_orders = EMACrossModel(
-            allow_short=True,
-            cooldown_bars=cooldown_bars,
-            max_signals=max_signals,
-        ).predict(df, trade_symbol)
+        with console.status("[yellow]Generating EMA long/short signals...[/yellow]"):
+            model_orders = EMACrossModel(
+                allow_short=True,
+                cooldown_bars=cooldown_bars,
+                max_signals=max_signals,
+            ).predict(df, trade_symbol)
     elif strategy == "ema_bracket":
         from liq.examples.models.ema_cross import EMACrossModel
-        model_orders = EMACrossModel(
-            allow_short=True,
-            take_profit_pct=0.01,
-            stop_loss_pct=0.005,
-            cooldown_bars=cooldown_bars,
-            max_signals=max_signals,
-        ).predict(df, trade_symbol)
+        with console.status("[yellow]Generating EMA bracket signals...[/yellow]"):
+            model_orders = EMACrossModel(
+                allow_short=True,
+                take_profit_pct=0.01,
+                stop_loss_pct=0.005,
+                cooldown_bars=cooldown_bars,
+                max_signals=max_signals,
+            ).predict(df, trade_symbol)
     console.print(
         f"[yellow]Orders[/yellow] baseline={len(baseline_orders)}, strategy={strategy} -> {len(model_orders)}"
     )
