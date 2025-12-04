@@ -60,7 +60,7 @@ def run(
     start: str = typer.Option(None, help="Start date YYYY-MM-DD (default: 1 year ago)"),
     end: str = typer.Option(None, help="End date YYYY-MM-DD (default: today)"),
     provider: str = typer.Option("binance_us", help="Provider: binance|binance_us|coinbase"),
-    strategy: str = typer.Option("baseline", help="Strategy: baseline|linear|ema"),
+    strategy: str = typer.Option("baseline", help="Strategy: baseline|linear|ema_long_short|ema_bracket"),
 ) -> None:
     """Run the full pipeline: data -> features -> model -> sim -> metrics."""
     # Select symbol based on provider formatting
@@ -128,9 +128,16 @@ def run(
     model_orders: list[OrderRequest] = []
     if strategy == "linear":
         model_orders = LinearSignalModel().fit(df).predict(df, trade_symbol)
-    elif strategy == "ema":
+    elif strategy == "ema_long_short":
         from liq.examples.models.ema_cross import EMACrossModel
-        model_orders = EMACrossModel().predict(df, trade_symbol)
+        model_orders = EMACrossModel(allow_short=True).predict(df, trade_symbol)
+    elif strategy == "ema_bracket":
+        from liq.examples.models.ema_cross import EMACrossModel
+        model_orders = EMACrossModel(
+            allow_short=True,
+            take_profit_pct=0.01,
+            stop_loss_pct=0.005,
+        ).predict(df, trade_symbol)
     console.print(
         f"[yellow]Orders[/yellow] baseline={len(baseline_orders)}, strategy={strategy} -> {len(model_orders)}"
     )
