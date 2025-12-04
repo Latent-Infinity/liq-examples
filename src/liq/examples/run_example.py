@@ -19,6 +19,7 @@ for rel in ("src", "../liq-metrics/src", "../liq-features/src", "../liq-data/src
         sys.path.insert(0, str(candidate))
 
 from liq.data.providers.binance import BinanceProvider
+from liq.data.providers.coinbase import CoinbaseProvider
 from liq.examples.data.fixtures import btc_usdt_fixture, btc_usdt_year_fixture
 from liq.examples.models.baseline import buy_and_hold
 from liq.examples.models.linear import LinearSignalModel
@@ -37,10 +38,10 @@ app = typer.Typer(help="BTC_USDT end-to-end example")
 console = Console()
 
 
-def _to_bars(df: pl.DataFrame) -> list[Bar]:
+def _to_bars(df: pl.DataFrame, symbol: str) -> list[Bar]:
     return [
         Bar(
-            symbol="BTC_USDT",
+            symbol=symbol,
             timestamp=row["timestamp"],
             open=row["open"],
             high=row["high"],
@@ -55,13 +56,16 @@ def _to_bars(df: pl.DataFrame) -> list[Bar]:
 @app.command()
 def run(
     use_fixture: bool = typer.Option(False, help="Use small fixture instead of fetching"),
-    use_synthetic_year: bool = typer.Option(False, help="Use 1-year synthetic fixture (no network)"),
+    use_synthetic_year: bool = typer.Option(False, help="Use 1-year synthetic fixture (no network; not default)"),
     start: str = typer.Option(None, help="Start date YYYY-MM-DD (default: 1 year ago)"),
     end: str = typer.Option(None, help="End date YYYY-MM-DD (default: today)"),
-    use_us: bool = typer.Option(False, help="Use binance.us endpoint"),
+    provider: str = typer.Option("binance_us", help="Provider: binance|binance_us|coinbase"),
     strategy: str = typer.Option("baseline", help="Strategy: baseline|linear|ema"),
 ) -> None:
     """Run the full pipeline: data -> features -> model -> sim -> metrics."""
+    # Select symbol based on provider formatting
+    trade_symbol = "BTC_USDT" if provider in ("binance", "binance_us") else "BTC-USD"
+
     # Data
     if use_fixture:
         df = btc_usdt_fixture()
@@ -71,17 +75,32 @@ def run(
         today = date.today()
         end_dt = date.fromisoformat(end) if end else today
         start_dt = date.fromisoformat(start) if start else (end_dt - timedelta(days=365))
-        try:
-            provider = BinanceProvider(use_us=use_us)
-            df = provider.fetch_bars(
-                "BTC_USDT",
+        if provider == "binance":
+            provider_client = BinanceProvider(use_us=False)
+            df = provider_client.fetch_bars(
+                trade_symbol,
                 start=start_dt,
                 end=end_dt,
                 timeframe="1m",
             )
-        except Exception as exc:  # pylint: disable=broad-except
-            console.print(f"[red]Provider fetch failed ({exc}); falling back to synthetic year fixture[/red]")
-            df = btc_usdt_year_fixture()
+        elif provider == "binance_us":
+            provider_client = BinanceProvider(use_us=True)
+            df = provider_client.fetch_bars(
+                trade_symbol,
+                start=start_dt,
+                end=end_dt,
+                timeframe="1m",
+            )
+        elif provider == "coinbase":
+            provider_client = CoinbaseProvider()
+            df = provider_client.fetch_bars(
+                trade_symbol,
+                start=start_dt,
+                end=end_dt,
+                timeframe="1m",
+            )
+        else:
+            raise ValueError("Unsupported provider; choose binance, binance_us, or coinbase")
     console.print(f"[green]Loaded bars: {df.height}[/green]")
 
     # QA metrics
@@ -105,13 +124,13 @@ def run(
     console.print("[cyan]Labels[/cyan]", summarize_labels(labels))
 
     # Orders: baseline + selected strategy
-    baseline_orders = buy_and_hold(df, "BTC_USDT")
+    baseline_orders = buy_and_hold(df, trade_symbol)
     model_orders: list[OrderRequest] = []
     if strategy == "linear":
-        model_orders = LinearSignalModel().fit(df).predict(df, "BTC_USDT")
+        model_orders = LinearSignalModel().fit(df).predict(df, trade_symbol)
     elif strategy == "ema":
         from liq.examples.models.ema_cross import EMACrossModel
-        model_orders = EMACrossModel().predict(df, "BTC_USDT")
+        model_orders = EMACrossModel().predict(df, trade_symbol)
     console.print(
         f"[yellow]Orders[/yellow] baseline={len(baseline_orders)}, strategy={strategy} -> {len(model_orders)}"
     )
@@ -128,7 +147,7 @@ def run(
     )
     sim_cfg = SimulatorConfig(min_order_delay_bars=0, initial_capital=1_000_000)
     sim = Simulator(provider_config=provider_cfg, config=sim_cfg)
-    bars = _to_bars(df)
+    bars = _to_bars(df, trade_symbol)
     result = sim.run(all_orders, bars)
     console.print(f"[green]Fills: {len(result.fills)}[/green]")
     if result.equity_curve:

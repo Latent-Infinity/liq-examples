@@ -19,11 +19,15 @@ cd quant/liq-examples
 PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
   python -m liq.examples.run_example --use-fixture
 
-# Fetch binance public BTC_USDT 1m (adjust dates as desired; falls back to synthetic if blocked)
+# Fetch BTC 1m bars for ~1 year (default provider binance_us). No synthetic fallback.
 PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
-  python -m liq.examples.run_example --start 2024-01-01 --end 2024-01-07
+  python -m liq.examples.run_example --start 2024-01-01 --end 2024-12-31 --provider binance_us
 
-# Run 1-year synthetic fixture (no network)
+# If binance is blocked, try Coinbase public data (symbol handled automatically)
+PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
+  python -m liq.examples.run_example --start 2024-01-01 --end 2024-12-31 --provider coinbase
+
+# Synthetic 1-year fixture remains available for offline runs (not default)
 PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
   python -m liq.examples.run_example --use-synthetic-year --strategy ema
 ```
