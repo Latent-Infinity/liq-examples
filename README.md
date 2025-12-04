@@ -9,3 +9,14 @@ Example end-to-end workflows for the LIQ Stack. Keeps examples isolated from cor
 ## Running
 1) Provide any needed credentials via `.env` (or select a no-auth provider/symbol).
 2) Run example scripts/CLIs to execute the pipeline end-to-end.
+
+### BTC_USDT Example
+
+Uses Binance public data (no auth required) or a small fixture:
+```bash
+# Fixture (fast)
+python -m liq.examples.run_example --use-fixture
+
+# Fetch binance public BTC_USDT 1m (adjust dates as desired)
+python -m liq.examples.run_example --start 2024-01-01 --end 2024-01-07
+```
