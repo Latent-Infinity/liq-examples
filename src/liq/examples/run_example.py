@@ -19,7 +19,7 @@ for rel in ("src", "../liq-metrics/src", "../liq-features/src", "../liq-data/src
         sys.path.insert(0, str(candidate))
 
 from liq.data.providers.binance import BinanceProvider
-from liq.examples.data.fixtures import btc_usdt_fixture
+from liq.examples.data.fixtures import btc_usdt_fixture, btc_usdt_year_fixture
 from liq.examples.models.baseline import buy_and_hold
 from liq.examples.models.linear import LinearSignalModel
 from liq.examples.pipelines.pipeline import fit_pipeline
@@ -55,6 +55,7 @@ def _to_bars(df: pl.DataFrame) -> list[Bar]:
 @app.command()
 def run(
     use_fixture: bool = typer.Option(False, help="Use small fixture instead of fetching"),
+    use_synthetic_year: bool = typer.Option(False, help="Use 1-year synthetic fixture (no network)"),
     start: str = typer.Option(None, help="Start date YYYY-MM-DD (default: 1 year ago)"),
     end: str = typer.Option(None, help="End date YYYY-MM-DD (default: today)"),
     use_us: bool = typer.Option(False, help="Use binance.us endpoint"),
@@ -64,17 +65,23 @@ def run(
     # Data
     if use_fixture:
         df = btc_usdt_fixture()
+    elif use_synthetic_year:
+        df = btc_usdt_year_fixture()
     else:
         today = date.today()
         end_dt = date.fromisoformat(end) if end else today
         start_dt = date.fromisoformat(start) if start else (end_dt - timedelta(days=365))
-        provider = BinanceProvider(use_us=use_us)
-        df = provider.fetch_bars(
-            "BTC_USDT",
-            start=start_dt,
-            end=end_dt,
-            timeframe="1m",
-        )
+        try:
+            provider = BinanceProvider(use_us=use_us)
+            df = provider.fetch_bars(
+                "BTC_USDT",
+                start=start_dt,
+                end=end_dt,
+                timeframe="1m",
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            console.print(f"[red]Provider fetch failed ({exc}); falling back to synthetic year fixture[/red]")
+            df = btc_usdt_year_fixture()
     console.print(f"[green]Loaded bars: {df.height}[/green]")
 
     # QA metrics
