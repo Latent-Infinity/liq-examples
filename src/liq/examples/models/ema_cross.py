@@ -15,8 +15,8 @@ from liq.types.enums import OrderSide, OrderType, TimeInForce
 
 @dataclass
 class EMACrossModel:
-    fast_window: int = 10
-    slow_window: int = 30
+    fast_window: int = 5
+    slow_window: int = 20
 
     def predict(self, df: pl.DataFrame, symbol: str) -> List[OrderRequest]:
         if df.height < self.slow_window:

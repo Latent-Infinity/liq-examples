@@ -31,3 +31,6 @@ data/
 *.csv
 *.json
 *.ipynb_checkpoints
+
+# Keep tracked fixtures
+!src/liq/examples/data/**
