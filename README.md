@@ -35,8 +35,8 @@ PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim
 PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
   python -m liq.examples.run_example --use-synthetic-year --strategy ema
 
-# Model examples (in progress; optional deps):
+# Model examples (optional deps):
 # - LightGBM tabular (1m/5m features, no scaling): `--strategy lgbm` (requires lightgbm)
 # - LSTM sequence (scaled sequences, 1m + optional 5m context): `--strategy lstm` (requires torch)
-# Both will be orchestrated through liq-runner configs once finalized.
+# - Add `--use-runner` to apply the feature pipeline via liq-runner orchestration.
 ```

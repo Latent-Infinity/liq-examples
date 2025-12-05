@@ -37,6 +37,8 @@ from liq.sim.simulator import Simulator
 from liq.core.enums import OrderSide, OrderType, TimeInForce
 from liq.core import OrderRequest, Bar
 from liq.core import Fill
+from liq.runner import Orchestrator, RunContext
+from liq.runner.pipeline_manager import PipelineState
 
 app = typer.Typer(help="BTC_USDT end-to-end example")
 console = Console()
@@ -82,6 +84,7 @@ def run(
     cooldown_bars: int = typer.Option(60, help="Min bars between EMA signals"),
     max_signals: int = typer.Option(2000, help="Max EMA signals (caps runtime)"),
     export_json: str = typer.Option(None, help="Optional path to export fills/equity summary as JSON"),
+    use_runner: bool = typer.Option(False, help="Apply FeaturePipeline via liq-runner orchestration"),
 ) -> None:
     """Run the full pipeline: data -> features -> model -> sim -> metrics."""
     # Select symbol based on provider formatting
@@ -136,6 +139,10 @@ def run(
         rets = mid.pct_change().fill_null(0).to_list()
         pipeline = fit_pipeline(df)
         transformed = pipeline.transform(rets)
+        if use_runner:
+            orch = Orchestrator(FeaturePipeline.from_dict)
+            ctx = RunContext(pipeline_state=PipelineState(pipeline.to_dict()), model_type=pipeline.model_type)
+            transformed = orch.apply_pipeline(rets, ctx)
 
     # Drift (compare end slice vs train slice)
     split = max(5, len(transformed) // 2)
