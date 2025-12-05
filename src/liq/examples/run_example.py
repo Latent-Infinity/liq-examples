@@ -36,10 +36,24 @@ from liq.sim.config import ProviderConfig, SimulatorConfig
 from liq.sim.simulator import Simulator
 from liq.core.enums import OrderSide, OrderType, TimeInForce
 from liq.core import OrderRequest, Bar
+from liq.core import Fill
 
 app = typer.Typer(help="BTC_USDT end-to-end example")
 console = Console()
 status = console.status
+
+
+def _serialize_fill(fill: Fill) -> dict:
+    """Convert Fill to JSON-serializable dict."""
+    data = fill.__dict__.copy()
+    for k, v in list(data.items()):
+        if isinstance(v, (Decimal,)):
+            data[k] = str(v)
+        elif isinstance(v, datetime):
+            data[k] = v.isoformat()
+        elif isinstance(v, Path):
+            data[k] = str(v)
+    return data
 
 
 def _to_bars(df: pl.DataFrame, symbol: str) -> list[Bar]:
@@ -67,6 +81,7 @@ def run(
     strategy: str = typer.Option("baseline", help="Strategy: baseline|linear|ema_long_short|ema_bracket|lgbm|lstm"),
     cooldown_bars: int = typer.Option(60, help="Min bars between EMA signals"),
     max_signals: int = typer.Option(2000, help="Max EMA signals (caps runtime)"),
+    export_json: str = typer.Option(None, help="Optional path to export fills/equity summary as JSON"),
 ) -> None:
     """Run the full pipeline: data -> features -> model -> sim -> metrics."""
     # Select symbol based on provider formatting
@@ -216,6 +231,17 @@ def run(
     console.print(f"[green]Fills: {len(result.fills)}[/green]")
     if result.equity_curve:
         console.print(f"[green]Final equity: {result.equity_curve[-1][1]}[/green]")
+    if export_json:
+        export_path = Path(export_json)
+        summary = {
+            "strategy": strategy,
+            "provider": provider,
+            "orders_submitted": len(all_orders),
+            "fills": [_serialize_fill(f) for f in result.fills],
+            "equity_curve": [(ts.isoformat(), str(eq)) for ts, eq in result.equity_curve],
+        }
+        export_path.write_text(json.dumps(summary, indent=2))
+        console.print(f"[cyan]Exported run summary to {export_path}[/cyan]")
 
 
 if __name__ == "__main__":

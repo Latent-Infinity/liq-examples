@@ -8,8 +8,8 @@ from typing import List
 
 import polars as pl
 
-from liq.types import OrderRequest
-from liq.types.enums import OrderSide, OrderType, TimeInForce
+from liq.core import OrderRequest
+from liq.core.enums import OrderSide, OrderType, TimeInForce
 
 
 def buy_and_hold(df: pl.DataFrame, symbol: str) -> List[OrderRequest]:
