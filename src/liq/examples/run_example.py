@@ -23,6 +23,9 @@ from liq.data.providers.coinbase import CoinbaseProvider
 from liq.examples.data.fixtures import btc_usdt_fixture, btc_usdt_year_fixture
 from liq.examples.models.baseline import buy_and_hold
 from liq.examples.models.linear import LinearSignalModel
+from liq.examples.models.lgbm_model import LightGBMModel
+from liq.examples.models.lstm_model import LSTMModel
+from liq.examples.pipelines.features import compute_features, make_sequence_windows
 from liq.examples.pipelines.pipeline import fit_pipeline
 from liq.features.pipeline import FeaturePipeline
 from liq.metrics import summarize_drift, summarize_labels, summarize_qa
@@ -31,8 +34,8 @@ from liq.features.drift import ks_drift
 from liq.features.labels import TripleBarrierConfig, triple_barrier_labels
 from liq.sim.config import ProviderConfig, SimulatorConfig
 from liq.sim.simulator import Simulator
-from liq.types.enums import OrderSide, OrderType, TimeInForce
-from liq.types import OrderRequest, Bar
+from liq.core.enums import OrderSide, OrderType, TimeInForce
+from liq.core import OrderRequest, Bar
 
 app = typer.Typer(help="BTC_USDT end-to-end example")
 console = Console()
@@ -61,7 +64,7 @@ def run(
     start: str = typer.Option(None, help="Start date YYYY-MM-DD (default: 1 year ago)"),
     end: str = typer.Option(None, help="End date YYYY-MM-DD (default: today)"),
     provider: str = typer.Option("binance_us", help="Provider: binance|binance_us|coinbase"),
-    strategy: str = typer.Option("baseline", help="Strategy: baseline|linear|ema_long_short|ema_bracket"),
+    strategy: str = typer.Option("baseline", help="Strategy: baseline|linear|ema_long_short|ema_bracket|lgbm|lstm"),
     cooldown_bars: int = typer.Option(60, help="Min bars between EMA signals"),
     max_signals: int = typer.Option(2000, help="Max EMA signals (caps runtime)"),
 ) -> None:
@@ -112,7 +115,7 @@ def run(
         qa = run_bar_qa(df)
     console.print("[cyan]QA metrics[/cyan]", summarize_qa(qa))
 
-    # Features/pipeline
+    # Features/pipeline for baseline metrics
     with console.status("[yellow]Building features...[/yellow]"):
         mid = (df["high"] + df["low"]) / 2
         rets = mid.pct_change().fill_null(0).to_list()
@@ -153,6 +156,31 @@ def run(
                 cooldown_bars=cooldown_bars,
                 max_signals=max_signals,
             ).predict(df, trade_symbol)
+    elif strategy in {"lgbm", "lstm"}:
+        with console.status("[yellow]Preparing ML features...[/yellow]"):
+            feats = compute_features(df, horizon=1, include_5m=True)
+        if strategy == "lgbm":
+            try:
+                model, metrics = LightGBMModel().fit(feats)
+                console.print(f"[cyan]LGBM metrics[/cyan] {metrics}")
+            except ImportError:
+                console.print("[red]lightgbm not installed; skipping strategy[/red]")
+                model_orders = []
+            else:
+                # Placeholder: convert predictions to orders; not yet implemented
+                model_orders = []
+        else:  # lstm
+            try:
+                feature_cols = [c for c in feats.columns if c not in ("timestamp", "label")]
+                X, y = make_sequence_windows(feats, feature_cols, "label", lookback=60)
+                model = LSTMModel(lookback=60, epochs=1)
+                model.fit(X, y)
+                console.print("[cyan]LSTM[/cyan] training complete")
+            except ImportError:
+                console.print("[red]torch not installed; skipping strategy[/red]")
+                model_orders = []
+            else:
+                model_orders = []
     console.print(
         f"[yellow]Orders[/yellow] baseline={len(baseline_orders)}, strategy={strategy} -> {len(model_orders)}"
     )
