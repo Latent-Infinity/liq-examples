@@ -45,7 +45,16 @@ class LightGBMModel:
         acc = float((preds_sign == y).mean()) if len(y) else 0.0
         return self, {"accuracy": acc}
 
-    def predict_orders(self, df: pl.DataFrame, symbol: str) -> List[Any]:
+    def predict_orders(
+        self,
+        df: pl.DataFrame,
+        symbol: str,
+        *,
+        max_signals: int = 500,
+        cooldown: int = 10,
+        threshold_hi: float = 0.55,
+        threshold_lo: float = 0.45,
+    ) -> List[Any]:
         if not self.model:
             return []
         X, _ = _split_features_labels(df, "label")
@@ -53,13 +62,13 @@ class LightGBMModel:
         orders: list[OrderRequest] = []
         last_idx = None
         for i, p in enumerate(preds):
-            if last_idx is not None and (i - last_idx) < 10:
+            if last_idx is not None and (i - last_idx) < cooldown:
                 continue
             ts = df["timestamp"][i]
             mid_price = df["mid"][i] if "mid" in df.columns else None
-            if p > 0.55:
+            if p > threshold_hi:
                 side = OrderSide.BUY
-            elif p < 0.45:
+            elif p < threshold_lo:
                 side = OrderSide.SELL
             else:
                 continue
@@ -75,7 +84,7 @@ class LightGBMModel:
                 )
             )
             last_idx = i
-            if len(orders) >= 500:
+            if len(orders) >= max_signals:
                 break
         return orders
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import polars as pl
@@ -13,7 +14,7 @@ import typer
 
 # Add sibling library src paths when running from repo (no install)
 ROOT = Path(__file__).resolve().parents[3]
-for rel in ("src", "../liq-metrics/src", "../liq-features/src", "../liq-data/src", "../liq-sim/src"):
+for rel in ("src", "../liq-metrics/src", "../liq-features/src", "../liq-data/src", "../liq-sim/src", "../liq-runner/src"):
     candidate = (ROOT / rel).resolve()
     if candidate.is_dir() and str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
@@ -35,9 +36,10 @@ from liq.features.labels import TripleBarrierConfig, triple_barrier_labels
 from liq.sim.config import ProviderConfig, SimulatorConfig
 from liq.sim.simulator import Simulator
 from liq.core.enums import OrderSide, OrderType, TimeInForce
+from uuid import UUID
 from liq.core import OrderRequest, Bar
 from liq.core import Fill
-from liq.runner import Orchestrator, RunContext
+from liq.runner.orchestrator import Orchestrator, RunContext
 from liq.runner.pipeline_manager import PipelineState
 
 app = typer.Typer(help="BTC_USDT end-to-end example")
@@ -49,7 +51,9 @@ def _serialize_fill(fill: Fill) -> dict:
     """Convert Fill to JSON-serializable dict."""
     data = fill.__dict__.copy()
     for k, v in list(data.items()):
-        if isinstance(v, (Decimal,)):
+        if isinstance(v, UUID):
+            data[k] = str(v)
+        elif isinstance(v, (Decimal,)):
             data[k] = str(v)
         elif isinstance(v, datetime):
             data[k] = v.isoformat()
@@ -141,7 +145,7 @@ def run(
         transformed = pipeline.transform(rets)
         if use_runner:
             orch = Orchestrator(FeaturePipeline.from_dict)
-            ctx = RunContext(pipeline_state=PipelineState(pipeline.to_dict()), model_type=pipeline.model_type)
+            ctx = RunContext(pipeline_state=PipelineState(pipeline.to_dict()), model_type=getattr(pipeline, "model_type", "unknown"))
             transformed = orch.apply_pipeline(rets, ctx)
 
     # Drift (compare end slice vs train slice)
