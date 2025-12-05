@@ -50,7 +50,7 @@ class LightGBMModel:
         df: pl.DataFrame,
         symbol: str,
         *,
-        max_signals: int = 500,
+        max_signals: int | None = None,
         cooldown: int = 10,
         threshold_hi: float = 0.55,
         threshold_lo: float = 0.45,
@@ -84,7 +84,7 @@ class LightGBMModel:
                 )
             )
             last_idx = i
-            if len(orders) >= max_signals:
+            if max_signals is not None and len(orders) >= max_signals:
                 break
         return orders
 

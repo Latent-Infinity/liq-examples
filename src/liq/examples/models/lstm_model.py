@@ -67,7 +67,7 @@ class LSTMModel:
         *,
         threshold_hi: float = 0.2,
         threshold_lo: float = -0.2,
-        max_signals: int = 500,
+        max_signals: int | None = None,
         cooldown: int = 10,
         mids: list[float] | None = None,
     ) -> List[OrderRequest]:
@@ -103,7 +103,7 @@ class LSTMModel:
                 )
             )
             last_idx = i
-            if len(orders) >= max_signals:
+            if max_signals is not None and len(orders) >= max_signals:
                 break
         return orders
 

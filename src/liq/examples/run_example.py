@@ -86,7 +86,7 @@ def run(
     provider: str = typer.Option("binance_us", help="Provider: binance|binance_us|coinbase"),
     strategy: str = typer.Option("baseline", help="Strategy: baseline|linear|ema_long_short|ema_bracket|lgbm|lstm"),
     cooldown_bars: int = typer.Option(60, help="Min bars between EMA signals"),
-    max_signals: int = typer.Option(2000, help="Max EMA signals (caps runtime)"),
+    max_signals: int | None = typer.Option(None, help="Max signals (caps runtime) for ML/EMA; None=unbounded"),
     export_json: str = typer.Option(None, help="Optional path to export fills/equity summary as JSON"),
     use_runner: bool = typer.Option(False, help="Apply FeaturePipeline via liq-runner orchestration"),
 ) -> None:

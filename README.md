@@ -38,5 +38,5 @@ PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim
 # Model examples (optional deps):
 # - LightGBM tabular (1m/5m features, no scaling): `--strategy lgbm` (requires lightgbm)
 # - LSTM sequence (scaled sequences, 1m + optional 5m context): `--strategy lstm` (requires torch)
-# - Add `--use-runner` to apply the feature pipeline via liq-runner orchestration.
+# - Add `--use-runner` to apply the feature pipeline via liq-runner orchestration. Set `--max-signals` to control or leave unset for no cap.
 ```
