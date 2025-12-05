@@ -34,4 +34,9 @@ PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim
 # Synthetic 1-year fixture remains available for offline runs (not default)
 PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
   python -m liq.examples.run_example --use-synthetic-year --strategy ema
+
+# Upcoming model examples (per quant/docs/model-example-plan.md):
+# - LightGBM (tabular, no scaling, 1m/5m features) via `--strategy lgbm`
+# - LSTM (scaled sequences, 1m + optional 5m context) via `--strategy lstm`
+# Both will be orchestrated through liq-runner configs once implemented.
 ```
