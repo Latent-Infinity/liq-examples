@@ -163,23 +163,34 @@ def run(
             try:
                 model, metrics = LightGBMModel().fit(feats)
                 console.print(f"[cyan]LGBM metrics[/cyan] {metrics}")
+                model_orders = model.predict_orders(feats, trade_symbol, max_signals=max_signals, cooldown=cooldown_bars)
             except ImportError:
                 console.print("[red]lightgbm not installed; skipping strategy[/red]")
-                model_orders = []
-            else:
-                # Placeholder: convert predictions to orders; not yet implemented
                 model_orders = []
         else:  # lstm
             try:
                 feature_cols = [c for c in feats.columns if c not in ("timestamp", "label")]
                 X, y = make_sequence_windows(feats, feature_cols, "label", lookback=60)
+                if X.shape[0] == 0:
+                    raise ValueError("Not enough data for LSTM windows")
                 model = LSTMModel(lookback=60, epochs=1)
                 model.fit(X, y)
-                console.print("[cyan]LSTM[/cyan] training complete")
+                timestamps = feats["timestamp"].to_list()
+                mids = feats["mid"].to_list()
+                model_orders = model.predict_orders(
+                    X,
+                    timestamps,
+                    trade_symbol,
+                    max_signals=max_signals,
+                    cooldown=cooldown_bars,
+                    mids=mids,
+                )
+                console.print(f"[cyan]LSTM[/cyan] training complete; signals={len(model_orders)}")
             except ImportError:
                 console.print("[red]torch not installed; skipping strategy[/red]")
                 model_orders = []
-            else:
+            except ValueError as exc:
+                console.print(f"[red]{exc}[/red]")
                 model_orders = []
     console.print(
         f"[yellow]Orders[/yellow] baseline={len(baseline_orders)}, strategy={strategy} -> {len(model_orders)}"

@@ -9,10 +9,15 @@ Intent:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import polars as pl
+
+from liq.core import OrderRequest
+from liq.core.enums import OrderSide, OrderType, TimeInForce
 
 
 try:
@@ -41,8 +46,38 @@ class LightGBMModel:
         return self, {"accuracy": acc}
 
     def predict_orders(self, df: pl.DataFrame, symbol: str) -> List[Any]:
-        # Strategy conversion is implemented elsewhere; keep stub here.
-        return []
+        if not self.model:
+            return []
+        X, _ = _split_features_labels(df, "label")
+        preds = self.model.predict(X)
+        orders: list[OrderRequest] = []
+        last_idx = None
+        for i, p in enumerate(preds):
+            if last_idx is not None and (i - last_idx) < 10:
+                continue
+            ts = df["timestamp"][i]
+            mid_price = df["mid"][i] if "mid" in df.columns else None
+            if p > 0.55:
+                side = OrderSide.BUY
+            elif p < 0.45:
+                side = OrderSide.SELL
+            else:
+                continue
+            orders.append(
+                OrderRequest(
+                    symbol=symbol,
+                    side=side,
+                    order_type=OrderType.MARKET,
+                    quantity=Decimal("1"),
+                    time_in_force=TimeInForce.DAY,
+                    timestamp=ts if isinstance(ts, datetime) else datetime.now(),
+                    metadata={"score": float(p), "mid": float(mid_price) if mid_price is not None else None},
+                )
+            )
+            last_idx = i
+            if len(orders) >= 500:
+                break
+        return orders
 
 
 def _split_features_labels(features: pl.DataFrame, label_col: str) -> Tuple[np.ndarray, np.ndarray]:

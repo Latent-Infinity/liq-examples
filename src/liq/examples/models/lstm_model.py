@@ -11,10 +11,15 @@ Implementation to follow per `quant/docs/model-example-plan.md`.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Tuple
+from datetime import datetime
+from decimal import Decimal
+from typing import Any, List, Tuple
 
 import numpy as np
 import polars as pl
+
+from liq.core import OrderRequest
+from liq.core.enums import OrderSide, OrderType, TimeInForce
 
 try:
     import torch
@@ -54,9 +59,53 @@ class LSTMModel:
             optimizer.step()
         return self
 
-    def predict_orders(self, df: pl.DataFrame, symbol: str) -> List[Any]:
-        # Strategy conversion is implemented elsewhere; keep stub here.
-        return []
+    def predict_orders(
+        self,
+        X: np.ndarray,
+        timestamps: list,
+        symbol: str,
+        *,
+        threshold_hi: float = 0.2,
+        threshold_lo: float = -0.2,
+        max_signals: int = 500,
+        cooldown: int = 10,
+        mids: list[float] | None = None,
+    ) -> List[OrderRequest]:
+        if not self.model or torch is None:
+            return []
+        X_t = torch.from_numpy(X.astype(np.float32))
+        logits = self.model(X_t)
+        probs = torch.softmax(logits, dim=1).detach().cpu().numpy()
+        # map probs to score in [-1,1]: p_pos - p_neg
+        scores = probs[:, 2] - probs[:, 0]
+        orders: list[OrderRequest] = []
+        last_idx = None
+        for i, score in enumerate(scores):
+            if last_idx is not None and (i - last_idx) < cooldown:
+                continue
+            ts = timestamps[i + self.lookback - 1]  # align window end with timestamp
+            mid = mids[i + self.lookback - 1] if mids else None
+            if score > threshold_hi:
+                side = OrderSide.BUY
+            elif score < threshold_lo:
+                side = OrderSide.SELL
+            else:
+                continue
+            orders.append(
+                OrderRequest(
+                    symbol=symbol,
+                    side=side,
+                    order_type=OrderType.MARKET,
+                    quantity=Decimal("1"),
+                    time_in_force=TimeInForce.DAY,
+                    timestamp=ts if isinstance(ts, datetime) else datetime.now(),
+                    metadata={"score": float(score), "mid": float(mid) if mid is not None else None},
+                )
+            )
+            last_idx = i
+            if len(orders) >= max_signals:
+                break
+        return orders
 
 
 class _TinyLSTM(nn.Module):  # pragma: no cover - simple helper

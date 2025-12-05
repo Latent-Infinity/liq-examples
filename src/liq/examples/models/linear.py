@@ -10,8 +10,8 @@ from typing import List
 import polars as pl
 from sklearn.linear_model import LinearRegression
 
-from liq.types import OrderRequest
-from liq.types.enums import OrderSide, OrderType, TimeInForce
+from liq.core import OrderRequest
+from liq.core.enums import OrderSide, OrderType, TimeInForce
 
 
 @dataclass
