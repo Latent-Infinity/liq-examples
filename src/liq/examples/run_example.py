@@ -76,6 +76,12 @@ def _to_bars(df: pl.DataFrame, symbol: str) -> list[Bar]:
         for row in df.to_dicts()
     ]
 
+def _aggregate_for_sim(df: pl.DataFrame, timeframe: str) -> pl.DataFrame:
+    """Optionally downsample bars for simulation to reduce runtime."""
+    if timeframe == "1m":
+        return df
+    raise ValueError("Unsupported sim timeframe; use 1m")
+
 
 @app.command()
 def run(
@@ -223,7 +229,7 @@ def run(
     )
     all_orders = baseline_orders + model_orders
     console.print(
-        f"[yellow]Running simulation on {len(bars:=_to_bars(df, trade_symbol))} bars and {len(all_orders)} orders; "
+        f"[yellow]Running simulation on {len(bars:=_to_bars(_aggregate_for_sim(df, '1m'), trade_symbol))} bars and {len(all_orders)} orders; "
         f"may take a few minutes for long ranges[/yellow]"
     )
 
