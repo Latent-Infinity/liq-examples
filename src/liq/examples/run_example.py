@@ -95,6 +95,10 @@ def run(
     max_signals: int | None = typer.Option(None, help="Max signals (caps runtime) for ML/EMA; None=unbounded"),
     export_json: str = typer.Option(None, help="Optional path to export fills/equity summary as JSON"),
     use_runner: bool = typer.Option(False, help="Apply FeaturePipeline via liq-runner orchestration"),
+    lgbm_model_in: str = typer.Option(None, help="Path to load a pre-trained LightGBM model (skip training)"),
+    lgbm_model_out: str = typer.Option(None, help="Optional path to save trained LightGBM model"),
+    event_driven: bool = typer.Option(False, help="Use event-driven activation (heap) in simulator"),
+    lazy_interval: bool = typer.Option(False, help="Use lazy interval equity updates when supported"),
 ) -> None:
     """Run the full pipeline: data -> features -> model -> sim -> metrics."""
     # Select symbol based on provider formatting
@@ -193,8 +197,15 @@ def run(
             feats = compute_features(df, horizon=1, include_5m=True)
         if strategy == "lgbm":
             try:
-                model, metrics = LightGBMModel().fit(feats)
-                console.print(f"[cyan]LGBM metrics[/cyan] {metrics}")
+                if lgbm_model_in:
+                    model = LightGBMModel.load(lgbm_model_in)
+                    console.print(f"[cyan]LGBM[/cyan] loaded model from {lgbm_model_in}")
+                else:
+                    model, metrics = LightGBMModel().fit(feats)
+                    console.print(f"[cyan]LGBM metrics[/cyan] {metrics}")
+                    if lgbm_model_out:
+                        model.save(lgbm_model_out)
+                        console.print(f"[cyan]LGBM[/cyan] saved model to {lgbm_model_out}")
                 model_orders = model.predict_orders(feats, trade_symbol, max_signals=max_signals, cooldown=cooldown_bars)
             except ImportError:
                 console.print("[red]lightgbm not installed; skipping strategy[/red]")
@@ -242,7 +253,12 @@ def run(
         slippage_params={"base_bps": "0", "volume_impact": "0"},
         settlement_days=0,
     )
-    sim_cfg = SimulatorConfig(min_order_delay_bars=0, initial_capital=1_000_000)
+    sim_cfg = SimulatorConfig(
+        min_order_delay_bars=0,
+        initial_capital=1_000_000,
+        event_driven=event_driven,
+        lazy_interval=lazy_interval,
+    )
     sim = Simulator(provider_config=provider_cfg, config=sim_cfg)
     result = sim.run(all_orders, bars)
     console.print(f"[green]Fills: {len(result.fills)}[/green]")

@@ -26,6 +26,18 @@ def test_lgbm_fit_returns_metrics_if_installed() -> None:
     assert model.model is not None
 
 
+def test_lgbm_save_and_load_if_installed(tmp_path) -> None:
+    feats = compute_features(btc_usdt_fixture(), horizon=1, include_5m=False)
+    try:
+        model, _ = LightGBMModel().fit(feats)
+    except ImportError:
+        pytest.skip("lightgbm not installed")
+    path = tmp_path / "model.txt"
+    model.save(str(path))
+    loaded = LightGBMModel.load(str(path))
+    assert loaded.model is not None
+
+
 def test_lstm_fit_runs_on_sequence_if_installed() -> None:
     feats = compute_features(btc_usdt_fixture(), horizon=1, include_5m=False)
     feature_cols = ["ret_1", "vol_10", "ema_fast", "ema_slow", "vol_ratio"]

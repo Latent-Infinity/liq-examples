@@ -45,6 +45,24 @@ class LightGBMModel:
         acc = float((preds_sign == y).mean()) if len(y) else 0.0
         return self, {"accuracy": acc}
 
+    def save(self, path: str) -> None:
+        """Persist the trained model to disk."""
+        if lgb is None:
+            raise ImportError("lightgbm is not installed; cannot save model")
+        if not self.model:
+            raise ValueError("No model to save")
+        self.model.save_model(path)
+
+    @classmethod
+    def load(cls, path: str) -> "LightGBMModel":
+        """Load a persisted LightGBM model from disk."""
+        if lgb is None:
+            raise ImportError("lightgbm is not installed; cannot load model")
+        booster = lgb.Booster(model_file=path)
+        inst = cls()
+        inst.model = booster
+        return inst
+
     def predict_orders(
         self,
         df: pl.DataFrame,
