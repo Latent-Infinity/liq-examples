@@ -5,7 +5,6 @@ from liq.examples.models.baseline import buy_and_hold
 from liq.examples.models.ema_cross import EMACrossModel
 from liq.examples.models.linear import LinearSignalModel
 from liq.examples.pipelines.pipeline import fit_pipeline
-from liq.features.pipeline import FeaturePipeline
 
 
 def test_pipeline_and_models_smoke() -> None:

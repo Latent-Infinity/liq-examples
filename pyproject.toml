@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "liq-examples"
+version = "0.1.0"
+description = "Public examples for the LIQ stack"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "firestrand", email = "firestrand@example.com" },
+]
+keywords = ["quantitative-finance", "examples", "backtesting", "signals"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "polars>=1.20",
+    "numpy>=2.0",
+    "typer>=0.15",
+    "rich>=13.9",
+    "liq-core>=0.1.0",
+    "liq-data>=0.1.0",
+    "liq-features>=0.1.0",
+    "liq-metrics>=0.1.0",
+    "liq-risk>=0.1.0",
+    "liq-signals>=0.1.0",
+    "liq-sim>=0.1.0",
+    "liq-store>=0.1.0",
+]
+
+[project.scripts]
+liq-examples = "liq.examples.run_example:app"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.14",
+    "mypy>=1.13",
+]
+
+[project.urls]
+Repository = "https://github.com/example/liq-examples"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/liq"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--strict-markers -v"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["liq"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+mypy_path = "src"
+namespace_packages = true
+explicit_package_bases = true
