@@ -1,18 +1,20 @@
 """Run the BTC_USDT end-to-end example using Binance public data."""
+# ruff: noqa: E402
 
 from __future__ import annotations
 
 import json
 import sys
-from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal, ROUND_DOWN
+from datetime import date, datetime, timedelta
+from decimal import ROUND_DOWN, Decimal
 from pathlib import Path
 from time import perf_counter
+from typing import cast
 
-import polars as pl
-from rich.console import Console
-import typer
 import numpy as np
+import polars as pl
+import typer
+from rich.console import Console
 
 # Add sibling library src paths when running from repo (no install)
 ROOT = Path(__file__).resolve().parents[3]
@@ -30,34 +32,35 @@ for rel in (
     if candidate.is_dir() and str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
-from liq.data.settings import load_symbol_data, get_settings
+from uuid import UUID
+
+from liq.core import Bar, Fill, OrderRequest
+from liq.core.enums import OrderSide
+from liq.core.portfolio import PortfolioState
+from liq.core.position import Position
+from liq.data.qa import run_bar_qa
+from liq.data.settings import get_settings, load_symbol_data
 from liq.examples.data.fixtures import btc_usdt_fixture, btc_usdt_year_fixture
 from liq.examples.models.baseline import buy_and_hold
 from liq.examples.pipelines.pipeline import fit_pipeline
 from liq.examples.strategies.registry import StrategyConfig, get_strategy
-from liq.metrics import summarize_drift, summarize_labels, summarize_qa
-from liq.data.qa import run_bar_qa
 from liq.features.drift import ks_drift
 from liq.features.labels import TripleBarrierConfig, triple_barrier_labels
+from liq.metrics import summarize_drift, summarize_labels, summarize_qa
+from liq.risk.config import MarketState, RiskConfig
+from liq.risk.engine import RiskEngine
+from liq.risk.protocols import StructuredConstraint
+from liq.risk.sizers import CryptoFractionalSizer
+from liq.signals import FileSignalProvider, Signal
 from liq.sim.config import ProviderConfig, SimulatorConfig
 from liq.sim.simulator import Simulator
-from liq.core.enums import OrderSide, OrderType
-from uuid import UUID
-from liq.core import OrderRequest, Bar
-from liq.core import Fill
-from liq.signals import FileSignalProvider, Signal
-from liq.risk.sizers import CryptoFractionalSizer
-from liq.risk.config import RiskConfig, MarketState
-from liq.risk.engine import RiskEngine
-from liq.core.portfolio import PortfolioState
-from liq.core.position import Position
 
 app = typer.Typer(help="BTC_USDT end-to-end example")
 console = Console()
 status = console.status
 
 
-def _performance_metrics(equity_curve: list[tuple[datetime, Decimal]]) -> dict[str, float]:
+def _performance_metrics(equity_curve: list[tuple[datetime, Decimal]]) -> dict[str, float | str]:
     """Compute performance metrics: Sharpe, Sortino, Calmar, total return, max drawdown, hit rate."""
     if len(equity_curve) < 2:
         return {"sharpe": 0.0, "sortino": 0.0, "calmar": 0.0, "total_return": 0.0, "max_drawdown": 0.0, "hit_rate": 0.0}
@@ -98,7 +101,7 @@ def _trade_metrics(fills: list[Fill]) -> dict[str, float]:
             "win_rate": 0.0,
             "pnl_sum": 0.0,
         }
-    pnls = [float(f.realized_pnl) for f in fills]
+    pnls = [float(f.realized_pnl if f.realized_pnl is not None else Decimal("0")) for f in fills]
     wins = [p for p in pnls if p > 0]
     losses = [p for p in pnls if p < 0]
     profit_factor = (sum(wins) / abs(sum(losses))) if losses else float("inf") if wins else 0.0
@@ -225,10 +228,13 @@ def _size_with_risk(
     )
     engine = RiskEngine(
         sizer=CryptoFractionalSizer(fraction=risk_fraction, min_qty=step, step_qty=step),
-        constraints=[
+        constraints=cast(
+            list[StructuredConstraint],
+            [
             FractionalMaxPositionConstraint(),
             FractionalGrossLeverageConstraint(),
-        ],
+            ],
+        ),
     )
 
     def equity_and_gross(ts: datetime) -> tuple[Decimal, Decimal]:
@@ -328,9 +334,7 @@ def _serialize_fill(fill: Fill) -> dict:
     """Convert Fill to JSON-serializable dict."""
     data = fill.__dict__.copy()
     for k, v in list(data.items()):
-        if isinstance(v, UUID):
-            data[k] = str(v)
-        elif isinstance(v, (Decimal,)):
+        if isinstance(v, (UUID, Decimal)):
             data[k] = str(v)
         elif isinstance(v, datetime):
             data[k] = v.isoformat()
@@ -478,8 +482,7 @@ def run(
     # Signals: either load from file or generate from a strategy/model
     loaded_signals: list[Signal] = []
     if signals_path:
-        provider = FileSignalProvider(Path(signals_path))
-        loaded_signals = list(provider.generate_signals())
+        loaded_signals = list(FileSignalProvider(Path(signals_path)).generate_signals())
         console.print(f"[cyan]Loaded {len(loaded_signals)} signals from {signals_path}[/cyan]")
 
     baseline_orders = buy_and_hold(df, trade_symbol)
@@ -504,7 +507,7 @@ def run(
             strategy_fn = get_strategy(strategy)
         except ValueError as exc:
             console.print(f"[red]{exc}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from exc
         with console.status(f"[yellow]Running strategy {strategy}...[/yellow]"):
             model_orders = strategy_fn(df, trade_symbol, cfg)
     t0 = record("signals_generation", t0)
@@ -532,7 +535,7 @@ def run(
         maintenance_margin_rate=Decimal("0.4"),
         settlement_days=0,
     )
-    sim_cfg = SimulatorConfig(min_order_delay_bars=0, initial_capital=int(initial_capital))
+    sim_cfg = SimulatorConfig(min_order_delay_bars=0, initial_capital=initial_capital)
     sim = Simulator(provider_config=provider_cfg, config=sim_cfg)
     result = sim.run(all_orders, bars)
     t0 = record("simulation", t0)

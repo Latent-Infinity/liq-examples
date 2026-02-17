@@ -1,4 +1,3 @@
-from datetime import date
 
 from liq.examples.data.fixtures import btc_usdt_fixture
 from liq.examples.models.baseline import buy_and_hold

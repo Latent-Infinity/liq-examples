@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import List
 
 import polars as pl
 from sklearn.linear_model import LinearRegression
@@ -19,7 +18,7 @@ class LinearSignalModel:
     lookback: int = 3
     threshold: float = 0.0
 
-    def fit(self, df: pl.DataFrame) -> "LinearSignalModel":
+    def fit(self, df: pl.DataFrame) -> LinearSignalModel:
         # Fit on lagged midrange returns
         if df.height <= self.lookback:
             return self
@@ -33,7 +32,7 @@ class LinearSignalModel:
         self._model = LinearRegression().fit(features, targets)
         return self
 
-    def predict(self, df: pl.DataFrame, symbol: str) -> List[OrderRequest]:
+    def predict(self, df: pl.DataFrame, symbol: str) -> list[OrderRequest]:
         if not hasattr(self, "_model"):
             return []
         mid = (df["high"] + df["low"]) / 2

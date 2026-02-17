@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import List
 
 import polars as pl
 
@@ -24,7 +23,7 @@ class EMACrossModel:
     cooldown_bars: int = 60  # enforce spacing between signals
     max_signals: int | None = None
 
-    def predict(self, df: pl.DataFrame, symbol: str) -> List[OrderRequest]:
+    def predict(self, df: pl.DataFrame, symbol: str) -> list[OrderRequest]:
         if df.height < self.slow_window:
             return []
         mid = (df["high"] + df["low"]) / 2
@@ -69,7 +68,7 @@ class EMACrossModel:
         side: OrderSide,
         ts: datetime,
         close_price: float,
-    ) -> List[OrderRequest]:
+    ) -> list[OrderRequest]:
         """Create market entry plus optional TP/SL bracket."""
         entry = OrderRequest(
             symbol=symbol,

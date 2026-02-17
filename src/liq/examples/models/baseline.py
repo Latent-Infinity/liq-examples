@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List
 
 import polars as pl
 
@@ -12,7 +11,7 @@ from liq.core import OrderRequest
 from liq.core.enums import OrderSide, OrderType, TimeInForce
 
 
-def buy_and_hold(df: pl.DataFrame, symbol: str) -> List[OrderRequest]:
+def buy_and_hold(df: pl.DataFrame, symbol: str) -> list[OrderRequest]:
     """Generate a single market buy at first bar."""
     if df.is_empty():
         return []

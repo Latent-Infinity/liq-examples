@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Iterable, List
 
 from liq.core import OrderRequest
 from liq.core.enums import OrderSide, OrderType, TimeInForce
@@ -21,10 +21,10 @@ def signals_to_orders(
     initial_equity: float | None = None,
     max_signals_per_day: int | None = None,
     cooldown_bars: int | None = None,
-) -> List[OrderRequest]:
+) -> list[OrderRequest]:
     """Convert signals to orders with optional frequency controls."""
     orders: list[OrderRequest] = []
-    per_day_counts: dict[datetime, int] = {}
+    per_day_counts: dict[date, int] = {}
     last_dir_ts: dict[str, dict[str, datetime]] = {}
     for sig in signals:
         if sig.direction == "flat":
@@ -32,7 +32,7 @@ def signals_to_orders(
         side = OrderSide.BUY if sig.direction == "long" else OrderSide.SELL
         ts = sig.normalized_timestamp()
         if ts.tzinfo is None or ts.tzinfo.utcoffset(ts) is None:
-            ts = ts.replace(tzinfo=timezone.utc)
+            ts = ts.replace(tzinfo=UTC)
         day = ts.date()
         # Enforce per-day cap
         if max_signals_per_day is not None:

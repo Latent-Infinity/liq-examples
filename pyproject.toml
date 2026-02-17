@@ -51,6 +51,17 @@ dev = [
 [project.urls]
 Repository = "https://github.com/Latent-Infinity/liq-examples"
 
+[tool.uv]
+[tool.uv.sources]
+liq-core = { path = "../liq-core", editable = true }
+liq-data = { path = "../liq-data", editable = true }
+liq-features = { path = "../liq-features", editable = true }
+liq-metrics = { path = "../liq-metrics", editable = true }
+liq-risk = { path = "../liq-risk", editable = true }
+liq-signals = { path = "../liq-signals", editable = true }
+liq-sim = { path = "../liq-sim", editable = true }
+liq-store = { path = "../liq-store", editable = true }
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/liq"]
 
@@ -86,6 +97,18 @@ ignore = [
 known-first-party = ["liq"]
 
 [tool.ty.environment]
-extra-paths = ["./src"]
+extra-paths = [
+    "./src",
+    "../liq-core/src",
+    "../liq-data/src",
+    "../liq-features/src",
+    "../liq-evolution/src",
+    "../liq-gp/src",
+    "../liq-metrics/src",
+    "../liq-risk/src",
+    "../liq-signals/src",
+    "../liq-sim/src",
+    "../liq-store/src",
+]
 
 [tool.ty.rules]

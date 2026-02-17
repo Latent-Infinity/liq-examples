@@ -5,35 +5,34 @@ Keeps run_example.py slim and makes adding/removing strategies trivial.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Callable, Dict, Optional
 
 import polars as pl
 
+from liq.core.enums import TimeInForce
 from liq.examples.models.baseline import buy_and_hold
 from liq.examples.models.linear import LinearSignalModel
 from liq.examples.signals import signals_to_orders
-from liq.signals import Signal
-from liq.core.enums import TimeInForce
 from liq.features.indicators.zigzag import zigzag_pivots
 
 
 @dataclass
 class StrategyConfig:
     cooldown_bars: int = 60
-    max_signals: Optional[int] = None
+    max_signals: int | None = None
     zigzag_pct: float = 0.01
 
 
 StrategyFunc = Callable[[pl.DataFrame, str, StrategyConfig], list]
 
 
-def baseline_strategy(df: pl.DataFrame, symbol: str, cfg: StrategyConfig) -> list:
+def baseline_strategy(df: pl.DataFrame, symbol: str, _cfg: StrategyConfig) -> list:
     return buy_and_hold(df, symbol)
 
 
-def linear_strategy(df: pl.DataFrame, symbol: str, cfg: StrategyConfig) -> list:
+def linear_strategy(df: pl.DataFrame, symbol: str, _cfg: StrategyConfig) -> list:
     return LinearSignalModel().fit(df).predict(df, symbol)
 
 
@@ -73,7 +72,7 @@ def zigzag_strategy(df: pl.DataFrame, symbol: str, cfg: StrategyConfig) -> list:
     )
 
 
-def build_registry() -> Dict[str, StrategyFunc]:
+def build_registry() -> dict[str, StrategyFunc]:
     return {
         "baseline": baseline_strategy,
         "linear": linear_strategy,
