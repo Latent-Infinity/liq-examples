@@ -44,11 +44,12 @@ dev = [
     "pytest>=8.3",
     "pytest-cov>=6.0",
     "ruff>=0.14",
-    "mypy>=1.13",
+    "ty>=0.0.1",
+    "pre-commit>=4.0",
 ]
 
 [project.urls]
-Repository = "https://github.com/example/liq-examples"
+Repository = "https://github.com/Latent-Infinity/liq-examples"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/liq"]
@@ -84,12 +85,7 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["liq"]
 
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_ignores = true
-ignore_missing_imports = true
-mypy_path = "src"
-namespace_packages = true
-explicit_package_bases = true
+[tool.ty.environment]
+extra-paths = ["./src"]
+
+[tool.ty.rules]

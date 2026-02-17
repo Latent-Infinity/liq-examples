@@ -11,7 +11,8 @@ internal repo to keep examples public and minimal.
 
 ## Install
 ```bash
-pip install -e .
+uv venv
+uv pip install -e .
 ```
 Requires the core LIQ libraries (`liq-data`, `liq-features`, `liq-metrics`, `liq-sim`,
 `liq-signals`, `liq-store`, `liq-risk`) to be installed or available on `PYTHONPATH`.
@@ -25,43 +26,44 @@ CLI entry point:
 liq-examples --help
 ```
 
+### Development
+```bash
+uv sync --extra dev
+uv run ruff check src tests
+uv run ty check src tests
+```
+
 ### BTC_USDT Examples
 
 Uses Binance public data (no auth required) or a small fixture:
 ```bash
-# From repo root (adds sibling libs to PYTHONPATH)
+# From repo root
 cd quant/liq-examples
-PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
-  python -m liq.examples.run_example --use-fixture
+uv run liq-examples --use-fixture
 
 # Buy-and-hold on a small live slice (baseline)
-PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
-  python -m liq.examples.run_example --start 2024-01-01 --end 2024-01-02 --provider coinbase --strategy baseline
+uv run liq-examples --start 2024-01-01 --end 2024-01-02 --provider coinbase --strategy baseline
 
 # EMA long/short on ~1 year of live data (midrange EMAs, shorting allowed). Adjust cooldown and max-signals to control runtime.
-PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
-  python -m liq.examples.run_example --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy ema_long_short --cooldown-bars 60 --max-signals 2000
+uv run liq-examples --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy ema_long_short --cooldown-bars 60 --max-signals 2000
 
 # EMA with take-profit/stop-loss brackets (long and short)
-PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
-  python -m liq.examples.run_example --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy ema_bracket --cooldown-bars 60 --max-signals 2000
+uv run liq-examples --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy ema_bracket --cooldown-bars 60 --max-signals 2000
 
 # Zigzag reversal signals (simple demo)
-PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
-  python -m liq.examples.run_example --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy zigzag --zigzag-pct 0.01
+uv run liq-examples --start 2024-01-01 --end 2024-12-31 --provider binance_us --strategy zigzag --zigzag-pct 0.01
 
 # Synthetic 1-year fixture remains available for offline runs (not default)
-PYTHONPATH=src:../liq-metrics/src:../liq-features/src:../liq-data/src:../liq-sim/src \
-  python -m liq.examples.run_example --use-synthetic-year --strategy ema_long_short
+uv run liq-examples --use-synthetic-year --strategy ema_long_short
 
 # Pre-generated signals replay: `--signals-path path/to/signals.csv|json`
+```
 
 ### Data source (store-only)
 - All examples load bars from `liq-store` (Parquet). Populate via `liq-data`:
 ```bash
-PYTHONPATH=src \
 BINANCE_USE_US=1 DATA_ROOT=/tmp/liq_cache \
-python -m liq.data.cli fetch binance BTC_USDT --start 2024-01-01 --end 2024-12-31 --timeframe 1m
+uv run python -m liq.data.cli fetch binance BTC_USDT --start 2024-01-01 --end 2024-12-31 --timeframe 1m
 ```
 - If the example key is `binance_us/BTC_USDT/1m`, ensure the store contains that path; copy/alias as needed.
 Ensure `DATA_ROOT` points to your stored data (e.g., `export DATA_ROOT=/path/to/liq-data/data`).
