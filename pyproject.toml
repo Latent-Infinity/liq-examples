@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "liq-examples"
-version = "0.1.0"
+version = "0.1.1"
 description = "Public examples for the LIQ stack"
 readme = "README.md"
 license = "MIT"
@@ -26,14 +26,14 @@ dependencies = [
     "numpy>=2.0",
     "typer>=0.15",
     "rich>=13.9",
-    "liq-core>=0.1.0",
-    "liq-data>=0.1.0",
-    "liq-features>=0.1.0",
-    "liq-metrics>=0.1.0",
-    "liq-risk>=0.1.0",
-    "liq-signals>=0.1.0",
-    "liq-sim>=0.1.0",
-    "liq-store>=0.1.0",
+    "liq-core>=0.1.1",
+    "liq-data>=0.1.2",
+    "liq-features>=0.1.1",
+    "liq-metrics>=0.1.1",
+    "liq-risk>=0.1.2",
+    "liq-signals>=0.1.1",
+    "liq-sim>=0.1.1",
+    "liq-store>=0.1.1",
 ]
 
 [project.scripts]
