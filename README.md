@@ -59,6 +59,26 @@ uv run liq-examples --use-synthetic-year --strategy ema_long_short
 # Pre-generated signals replay: `--signals-path path/to/signals.csv|json`
 ```
 
+### GP & Evolution Examples
+
+Genetic programming (liq-gp) and strategy evolution (liq-evolution) examples:
+
+```bash
+cd quant/liq-examples
+
+# Pure liq-gp symbolic regression — evolves sin(x) approximation
+uv run python -m liq.examples.strategies.gp_basics
+
+# Seed catalog exploration + warm-start evolution
+uv run python -m liq.examples.strategies.evolution_seeds
+
+# Two-stage fitness: fast F1 screening + parsimony refinement
+uv run python -m liq.examples.strategies.evolution_two_stage
+
+# Regime-aware operational presets
+uv run python -m liq.examples.strategies.evolution_regime_presets
+```
+
 ### Data source (store-only)
 - All examples load bars from `liq-store` (Parquet). Populate via `liq-data`:
 ```bash

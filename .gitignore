@@ -218,3 +218,6 @@ data/
 
 # macOS finder junk
 .DS_Store
+
+# Serena
+.serena/

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "liq-examples"
-version = "0.1.1"
+version = "0.1.2"
 description = "Public examples for the LIQ stack"
 readme = "README.md"
 license = "MIT"
@@ -34,6 +34,9 @@ dependencies = [
     "liq-signals>=0.1.1",
     "liq-sim>=0.1.1",
     "liq-store>=0.1.1",
+    "liq-gp>=0.1.2",
+    "liq-evolution>=0.2.1",
+    "liq-datasets",
 ]
 
 [project.scripts]
@@ -61,6 +64,9 @@ liq-risk = { path = "../liq-risk", editable = true }
 liq-signals = { path = "../liq-signals", editable = true }
 liq-sim = { path = "../liq-sim", editable = true }
 liq-store = { path = "../liq-store", editable = true }
+liq-gp = { path = "../liq-gp", editable = true }
+liq-evolution = { path = "../liq-evolution", editable = true }
+liq-datasets = { path = "../liq-datasets", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/liq"]

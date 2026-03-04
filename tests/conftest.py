@@ -17,6 +17,9 @@ SIBLINGS = [
     quant_root / "liq-signals" / "src",
     quant_root / "liq-store" / "src",
     quant_root / "liq-risk" / "src",
+    quant_root / "liq-gp" / "src",
+    quant_root / "liq-evolution" / "src",
+    quant_root / "liq-datasets" / "src",
 ]
 for path in SIBLINGS:
     if path.is_dir() and str(path) not in sys.path:
