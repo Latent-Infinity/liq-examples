@@ -14,6 +14,8 @@ Usage:
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 from liq.evolution import (
@@ -28,6 +30,7 @@ from liq.evolution import (
     prepare_evaluation_context,
 )
 from liq.evolution.config import PrimitiveConfig
+from liq.evolution.protocols import PrimitiveRegistry as EvolutionPrimitiveRegistry
 from liq.gp.config import GPConfig as LiqGPConfig
 
 # ---------------------------------------------------------------------------
@@ -96,7 +99,9 @@ def run_seed_catalog_demo(
     available = set(all_seeds)
     seed_names = [s for s in seed_names if s in available]
 
-    programs = build_strategy_seeds(seed_names, registry)
+    programs = build_strategy_seeds(
+        seed_names, cast(EvolutionPrimitiveRegistry, registry)
+    )
     print(f"\nBuilt {len(programs)} seed programs: {seed_names}")
 
     # -- 4. Warm-start evolution ---------------------------------------
@@ -104,9 +109,7 @@ def run_seed_catalog_demo(
     context = prepare_evaluation_context(ohlcv)
     context["labels"] = _make_labels(ohlcv["close"])
 
-    # Build liq-gp config directly (mirrors liq-evolution's own integration
-    # tests) with semantic_dedup_enabled=False to avoid FeatureContext
-    # caching conflicts when fingerprinting uses a sub-sampled context.
+    # Build liq-gp config directly (mirrors liq-evolution's integration tests).
     gp_config = LiqGPConfig(
         population_size=population_size,
         max_depth=4,
@@ -115,7 +118,6 @@ def run_seed_catalog_demo(
         tournament_size=3,
         elitism_count=2,
         constant_opt_enabled=False,
-        semantic_dedup_enabled=False,
         simplification_enabled=False,
     )
 

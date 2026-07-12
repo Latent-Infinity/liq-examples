@@ -132,7 +132,6 @@ def run_two_stage_demo(
         tournament_size=3,
         elitism_count=2,
         constant_opt_enabled=False,
-        semantic_dedup_enabled=False,
         simplification_enabled=False,
     )
 

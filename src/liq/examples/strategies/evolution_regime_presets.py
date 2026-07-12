@@ -14,6 +14,8 @@ Usage:
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 from liq.evolution import (
@@ -26,6 +28,7 @@ from liq.evolution import (
     prepare_evaluation_context,
 )
 from liq.evolution.config import PrimitiveConfig
+from liq.evolution.protocols import PrimitiveRegistry as EvolutionPrimitiveRegistry
 from liq.gp.config import GPConfig as LiqGPConfig
 
 # ---------------------------------------------------------------------------
@@ -85,7 +88,6 @@ def run_regime_presets_demo(preset_name: str = "baseline") -> None:
         tournament_size=3,
         elitism_count=2,
         constant_opt_enabled=False,
-        semantic_dedup_enabled=False,
         simplification_enabled=False,
     )
 
@@ -93,7 +95,9 @@ def run_regime_presets_demo(preset_name: str = "baseline") -> None:
     registry = build_trading_registry(PrimitiveConfig())
 
     # Build seed programs from the preset's recommended templates
-    seed_programs = build_strategy_seeds(preset.seed_templates, registry)
+    seed_programs = build_strategy_seeds(
+        preset.seed_templates, cast(EvolutionPrimitiveRegistry, registry)
+    )
     ohlcv = _synthetic_ohlcv()
     context = prepare_evaluation_context(ohlcv)
     context["labels"] = _make_labels(ohlcv["close"])

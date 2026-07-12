@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import cast
 
 import polars as pl
 
@@ -16,6 +17,7 @@ from liq.examples.models.baseline import buy_and_hold
 from liq.examples.models.linear import LinearSignalModel
 from liq.examples.signals import signals_to_orders
 from liq.features.indicators.zigzag import zigzag_pivots
+from liq.signals import Signal
 
 
 @dataclass
@@ -66,7 +68,7 @@ def zigzag_strategy(df: pl.DataFrame, symbol: str, cfg: StrategyConfig) -> list:
         symbol=symbol,
     )
     return signals_to_orders(
-        signals,
+        cast(list[Signal], signals),
         default_quantity=Decimal("1"),
         default_time_in_force=TimeInForce.DAY,
     )
