@@ -43,7 +43,9 @@ def signals_to_orders(
         if cooldown_bars is not None:
             dir_key = "long" if side == OrderSide.BUY else "short"
             last_ts = last_dir_ts.get(sig.symbol, {}).get(dir_key)
-            if last_ts and (ts - last_ts).total_seconds() < cooldown_bars * 60 * 15:  # assuming 15m bars
+            if (
+                last_ts and (ts - last_ts).total_seconds() < cooldown_bars * 60 * 15
+            ):  # assuming 15m bars
                 continue
         qty = default_quantity
         if risk_fraction and initial_equity and price_lookup:

@@ -99,9 +99,7 @@ def run_seed_catalog_demo(
     available = set(all_seeds)
     seed_names = [s for s in seed_names if s in available]
 
-    programs = build_strategy_seeds(
-        seed_names, cast(EvolutionPrimitiveRegistry, registry)
-    )
+    programs = build_strategy_seeds(seed_names, cast(EvolutionPrimitiveRegistry, registry))
     print(f"\nBuilt {len(programs)} seed programs: {seed_names}")
 
     # -- 4. Warm-start evolution ---------------------------------------

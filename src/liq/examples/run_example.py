@@ -63,7 +63,14 @@ status = console.status
 def _performance_metrics(equity_curve: list[tuple[datetime, Decimal]]) -> dict[str, float | str]:
     """Compute performance metrics: Sharpe, Sortino, Calmar, total return, max drawdown, hit rate."""
     if len(equity_curve) < 2:
-        return {"sharpe": 0.0, "sortino": 0.0, "calmar": 0.0, "total_return": 0.0, "max_drawdown": 0.0, "hit_rate": 0.0}
+        return {
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "calmar": 0.0,
+            "total_return": 0.0,
+            "max_drawdown": 0.0,
+            "hit_rate": 0.0,
+        }
     eq = np.array([float(v[1]) for v in equity_curve], dtype=float)
     rets = np.diff(eq) / eq[:-1]
     mean_ret = rets.mean()
@@ -153,7 +160,13 @@ def _size_with_risk(
     step = Decimal("0.0001")
 
     class FractionalMaxPositionConstraint:
-        def apply(self, orders: list[OrderRequest], portfolio_state: PortfolioState, market_state: MarketState, risk_config: RiskConfig) -> list[OrderRequest]:
+        def apply(
+            self,
+            orders: list[OrderRequest],
+            portfolio_state: PortfolioState,
+            market_state: MarketState,
+            risk_config: RiskConfig,
+        ) -> list[OrderRequest]:
             result: list[OrderRequest] = []
             equity = portfolio_state.equity
             max_position_value = equity * Decimal(str(risk_config.max_position_pct))
@@ -180,10 +193,18 @@ def _size_with_risk(
             return result
 
     class FractionalGrossLeverageConstraint:
-        def apply(self, orders: list[OrderRequest], portfolio_state: PortfolioState, market_state: MarketState, risk_config: RiskConfig) -> list[OrderRequest]:
+        def apply(
+            self,
+            orders: list[OrderRequest],
+            portfolio_state: PortfolioState,
+            market_state: MarketState,
+            risk_config: RiskConfig,
+        ) -> list[OrderRequest]:
             equity = portfolio_state.equity
             max_exposure = equity * Decimal(str(risk_config.max_gross_leverage))
-            current_exposure = sum((abs(pos.market_value) for pos in portfolio_state.positions.values()), Decimal("0"))
+            current_exposure = sum(
+                (abs(pos.market_value) for pos in portfolio_state.positions.values()), Decimal("0")
+            )
             sells = [o for o in orders if o.side == OrderSide.SELL]
             buys = [o for o in orders if o.side == OrderSide.BUY]
             result: list[OrderRequest] = list(sells)
@@ -231,8 +252,8 @@ def _size_with_risk(
         constraints=cast(
             list[StructuredConstraint],
             [
-            FractionalMaxPositionConstraint(),
-            FractionalGrossLeverageConstraint(),
+                FractionalMaxPositionConstraint(),
+                FractionalGrossLeverageConstraint(),
             ],
         ),
     )
@@ -357,6 +378,7 @@ def _to_bars(df: pl.DataFrame, symbol: str) -> list[Bar]:
         for row in df.to_dicts()
     ]
 
+
 def _aggregate_for_sim(df: pl.DataFrame, timeframe: str) -> pl.DataFrame:
     """Optionally downsample bars for simulation to reduce runtime."""
     if timeframe == "1m":
@@ -367,7 +389,9 @@ def _aggregate_for_sim(df: pl.DataFrame, timeframe: str) -> pl.DataFrame:
 @app.command()
 def run(
     use_fixture: bool = typer.Option(False, help="Use small fixture instead of fetching"),
-    use_synthetic_year: bool = typer.Option(False, help="Use 1-year synthetic fixture (no network; not default)"),
+    use_synthetic_year: bool = typer.Option(
+        False, help="Use 1-year synthetic fixture (no network; not default)"
+    ),
     start: str = typer.Option(None, help="Start date YYYY-MM-DD (default: 1 year ago)"),
     end: str = typer.Option(None, help="End date YYYY-MM-DD (default: today)"),
     provider: str = typer.Option("binance_us", help="Provider: binance|binance_us|coinbase"),
@@ -376,14 +400,28 @@ def run(
         help="Strategy: baseline|linear|ema_long_short|ema_bracket|zigzag",
     ),
     cooldown_bars: int = typer.Option(60, help="Min bars between EMA signals"),
-    max_signals: int | None = typer.Option(None, help="Max signals (caps runtime) for ML/EMA; None=unbounded"),
-    export_json: str = typer.Option(None, help="Optional path to export fills/equity summary as JSON"),
-    signals_path: str = typer.Option(None, help="Path to pre-generated signals file (.csv/.json/.jsonl)"),
-    profile_json: str = typer.Option(None, help="Optional path to write timing/profile summary as JSON"),
-    risk_fraction: float = typer.Option(0.05, help="Fraction of equity per trade for sizing (liq-risk fixed-fractional)"),
-    risk_max_position_pct: float = typer.Option(0.1, help="Max position size as fraction of equity"),
+    max_signals: int | None = typer.Option(
+        None, help="Max signals (caps runtime) for ML/EMA; None=unbounded"
+    ),
+    export_json: str = typer.Option(
+        None, help="Optional path to export fills/equity summary as JSON"
+    ),
+    signals_path: str = typer.Option(
+        None, help="Path to pre-generated signals file (.csv/.json/.jsonl)"
+    ),
+    profile_json: str = typer.Option(
+        None, help="Optional path to write timing/profile summary as JSON"
+    ),
+    risk_fraction: float = typer.Option(
+        0.05, help="Fraction of equity per trade for sizing (liq-risk fixed-fractional)"
+    ),
+    risk_max_position_pct: float = typer.Option(
+        0.1, help="Max position size as fraction of equity"
+    ),
     gross_leverage_cap: float = typer.Option(2.0, help="Max gross leverage cap used for sizing"),
-    zigzag_pct: float = typer.Option(0.01, help="Zigzag reversal threshold (fraction, e.g., 0.01=1%)"),
+    zigzag_pct: float = typer.Option(
+        0.01, help="Zigzag reversal threshold (fraction, e.g., 0.01=1%)"
+    ),
 ) -> None:
     """Run the full pipeline: data -> features -> model -> sim -> metrics."""
     timings: dict[str, float] = {}
@@ -517,7 +555,7 @@ def run(
     df_for_sim = df
     all_orders = baseline_orders + model_orders
     console.print(
-        f"[yellow]Running simulation on {len(bars:=_to_bars(_aggregate_for_sim(df_for_sim, '1m'), trade_symbol))} bars and {len(all_orders)} orders; "
+        f"[yellow]Running simulation on {len(bars := _to_bars(_aggregate_for_sim(df_for_sim, '1m'), trade_symbol))} bars and {len(all_orders)} orders; "
         f"may take a few minutes for long ranges[/yellow]"
     )
 
