@@ -85,5 +85,14 @@ uv run python -m liq.examples.strategies.evolution_regime_presets
 BINANCE_USE_US=1 DATA_ROOT=/tmp/liq_cache \
 uv run python -m liq.data.cli fetch binance BTC_USDT --start 2024-01-01 --end 2024-12-31 --timeframe 1m
 ```
-- If the example key is `binance_us/BTC_USDT/1m`, ensure the store contains that path; copy/alias as needed.
+- **One venue, one storage key.** Binance bars live under `binance/BTC_USDT/1m` and nowhere else,
+  including when `BINANCE_USE_US=1` produced them: that tree was measured against a live
+  `api.binance.us` pull and is Binance.US data, which is what the `binance` key is declared to
+  hold. **Do not copy or alias bars into a `binance_us/...` path** — this line used to say
+  "copy/alias as needed", and duplicating bars under a second key makes the same minutes reachable
+  under two fold governances, which is exactly what fold governance exists to prevent. Nothing needs
+  copying: `--provider binance_us` already falls back to the `binance` key, and the two strings
+  resolve to the same governed dataset. `liq-data` refuses an ingest whose venue disagrees with the
+  key (`StorageVenueMismatchError`), and `fetch binance_us` is not a thing — no provider factory
+  builds it. See `liq-docs/plans/oracle-binance-us-market-identity-2026-09-24.md`.
 Ensure `DATA_ROOT` points to your stored data (e.g., `export DATA_ROOT=/path/to/liq-data/data`).
